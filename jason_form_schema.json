@@ -9,6 +9,14 @@
       "title_key": "section.metadata.title",
       "fields": [
         {
+          "id": "dynamodbkey",
+          "type": "hidden",
+          "required": true,
+          "auto_generate": true,
+          "generation_strategy": "uuid",
+          "database_key": "dynamodbkey"
+        },
+        {
           "id": "report_id",
           "type": "hidden",
           "required": true,
@@ -153,7 +161,6 @@
         }
       ]
     },
-    
     {
       "id": "extra",
       "title_key": "section.extra.title",
