@@ -1,3 +1,4 @@
+import base64
 import json
 import uuid
 from datetime import datetime
@@ -69,7 +70,7 @@ def send_report_to_aws(report):
             aws_form_url,
             headers=headers,
             json=report,
-            timeout=15
+            timeout=30
         )
 
         if 200 <= response.status_code < 300:
@@ -175,6 +176,34 @@ def create_google_maps_link(coordinates):
     return f"https://www.google.com/maps?q={cleaned}"
 
 
+def mime_to_extensions(accept_list):
+    file_types = []
+
+    for mime_type in accept_list:
+        if mime_type == "image/jpeg":
+            file_types.extend(["jpg", "jpeg"])
+        elif mime_type == "image/png":
+            file_types.append("png")
+        elif mime_type == "image/webp":
+            file_types.append("webp")
+        elif mime_type == "application/pdf":
+            file_types.append("pdf")
+
+    return file_types
+
+
+def encode_uploaded_file(uploaded_file):
+    file_bytes = uploaded_file.getvalue()
+    encoded = base64.b64encode(file_bytes).decode("utf-8")
+
+    return {
+        "filename": uploaded_file.name,
+        "content_type": uploaded_file.type,
+        "size_bytes": uploaded_file.size,
+        "base64": encoded
+    }
+
+
 # -----------------------------
 # Streamlit page setup
 # -----------------------------
@@ -274,7 +303,6 @@ with st.form("damage_report_form"):
             field_type = field["type"]
             required = field.get("required", False)
 
-            # Hidden fields do not have label_key
             if field_type == "hidden":
                 raw_answers[field_id] = generate_system_value(field)
                 continue
@@ -369,10 +397,21 @@ with st.form("damage_report_form"):
                 )
 
             # -----------------------------
-            # File fields are ignored completely
+            # File upload
             # -----------------------------
             elif field_type == "file":
-                continue
+                max_files = field.get("max_files", 1)
+                accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
+                file_types = mime_to_extensions(accept)
+
+                uploaded = st.file_uploader(
+                    label,
+                    type=file_types,
+                    accept_multiple_files=max_files > 1,
+                    key=widget_key
+                )
+
+                raw_answers[field_id] = uploaded
 
             else:
                 st.warning(f"Unsupported field type: {field_type}")
@@ -392,10 +431,6 @@ if submitted:
     for section in schema["sections"]:
         for field in section.get("fields", []):
             field_id = field["id"]
-
-            # Ignore removed/disabled file fields
-            if field.get("type") == "file":
-                continue
 
             if field.get("required", False):
                 value = raw_answers.get(field_id)
@@ -422,10 +457,6 @@ if submitted:
                 field_type = field.get("type")
                 database_key = field.get("database_key")
 
-                # Ignore file fields completely
-                if field_type == "file":
-                    continue
-
                 if not database_key:
                     continue
 
@@ -434,6 +465,15 @@ if submitted:
                 # Convert date object to string
                 if field_type == "date" and value is not None:
                     value = value.isoformat()
+
+                # Convert uploaded files to JSON-safe base64 objects
+                if field_type == "file":
+                    if isinstance(value, list):
+                        value = [encode_uploaded_file(file) for file in value]
+                    elif value is not None:
+                        value = [encode_uploaded_file(value)]
+                    else:
+                        value = []
 
                 set_nested_value(report, database_key, value)
 
@@ -471,7 +511,13 @@ if submitted:
         reporter = report.get("reporter", {})
         location = report.get("location", {})
         damage = report.get("damage", {})
+        media = report.get("media", {})
         classification = report.get("classification", {})
+
+        photo_names = []
+        for photo in media.get("photos", []):
+            if isinstance(photo, dict):
+                photo_names.append(photo.get("filename", "-"))
 
         st.markdown(f"""
 ### Damage Report
@@ -497,6 +543,12 @@ if submitted:
 
 **Description:**  
 {damage.get("description", "-")}
+
+---
+
+### Photos
+
+{", ".join(photo_names) if photo_names else "-"}
 
 ---
 
