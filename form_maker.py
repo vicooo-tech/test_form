@@ -26,7 +26,7 @@ translations = load_json("translations.json")
 def t(key, language):
     """
     Translate a translation key into the selected language.
-    Falls back to default language, then key itself.
+    Falls back to default language, then English, then key itself.
     """
     item = translations.get(key, {})
 
@@ -35,7 +35,8 @@ def t(key, language):
 
     return (
         item.get(language)
-        or item.get(schema["default_language"])
+        or item.get(schema.get("default_language", "de"))
+        or item.get("en")
         or key
     )
 
@@ -45,9 +46,6 @@ def t(key, language):
 # -----------------------------
 
 def generate_system_value(field):
-    """
-    Generate automatic values for hidden/system fields.
-    """
     strategy = field.get("generation_strategy")
 
     if strategy == "uuid":
@@ -61,15 +59,6 @@ def generate_system_value(field):
 
 
 def set_nested_value(data, dotted_key, value):
-    """
-    Convert database_key like 'reporter.name'
-    into nested JSON:
-    {
-      "reporter": {
-        "name": value
-      }
-    }
-    """
     keys = dotted_key.split(".")
     current = data
 
@@ -82,9 +71,6 @@ def set_nested_value(data, dotted_key, value):
 
 
 def is_empty(value):
-    """
-    Check whether a field value should count as missing.
-    """
     if value is None:
         return True
 
@@ -98,9 +84,6 @@ def is_empty(value):
 
 
 def get_option_labels(field, language):
-    """
-    Return displayed labels and internal values for choice fields.
-    """
     labels = []
     values = []
 
@@ -112,9 +95,6 @@ def get_option_labels(field, language):
 
 
 def get_department_hint(schema, answers):
-    """
-    Finds the department_hint from the selected damage category.
-    """
     selected_category = answers.get("damage_category")
 
     if not selected_category:
@@ -131,10 +111,6 @@ def get_department_hint(schema, answers):
 
 
 def create_google_maps_link(coordinates):
-    """
-    Creates a Google Maps URL from coordinates text.
-    Expected format: '47.3769, 8.5417'
-    """
     if not coordinates:
         return None
 
@@ -152,19 +128,37 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("Zurich Damage Report")
-st.caption("Generated automatically from JSON schema")
+
+# -----------------------------
+# Language selector top right
+# -----------------------------
+
+language_labels = {
+    "de": "Deutsch",
+    "en": "English",
+    "it": "Italiano",
+    "fr": "Français"
+}
+
+top_left, top_right = st.columns([3, 1])
+
+with top_right:
+    language = st.selectbox(
+        "Language",
+        options=schema["supported_languages"],
+        format_func=lambda code: language_labels.get(code, code),
+        index=schema["supported_languages"].index(schema["default_language"]),
+        key="selected_language",
+        label_visibility="collapsed"
+    )
 
 
 # -----------------------------
-# Language selection
+# App title
 # -----------------------------
 
-language = st.selectbox(
-    "Language / Sprache / Lingua / Langue",
-    schema["supported_languages"],
-    index=schema["supported_languages"].index(schema["default_language"])
-)
+st.title(t("app.title", language))
+st.caption(t("app.caption", language))
 
 st.divider()
 
@@ -196,9 +190,11 @@ with st.form("damage_report_form"):
             if required:
                 label = label + " *"
 
-            placeholder = None
+            placeholder = ""
             if "placeholder_key" in field:
                 placeholder = t(field["placeholder_key"], language)
+
+            widget_key = f"{language}_{field_id}"
 
             # -----------------------------
             # Text input
@@ -206,7 +202,8 @@ with st.form("damage_report_form"):
             if field_type == "text":
                 raw_answers[field_id] = st.text_input(
                     label,
-                    placeholder=placeholder or ""
+                    placeholder=placeholder,
+                    key=widget_key
                 )
 
             # -----------------------------
@@ -215,7 +212,8 @@ with st.form("damage_report_form"):
             elif field_type == "textarea":
                 raw_answers[field_id] = st.text_area(
                     label,
-                    placeholder=placeholder or ""
+                    placeholder=placeholder,
+                    key=widget_key
                 )
 
             # -----------------------------
@@ -223,13 +221,13 @@ with st.form("damage_report_form"):
             # -----------------------------
             elif field_type == "single_choice":
                 labels, values = get_option_labels(field, language)
-
                 display_options = [""] + labels
 
                 selected_label = st.selectbox(
                     label,
                     display_options,
-                    index=0
+                    index=0,
+                    key=widget_key
                 )
 
                 if selected_label == "":
@@ -246,7 +244,8 @@ with st.form("damage_report_form"):
 
                 selected_labels = st.multiselect(
                     label,
-                    labels
+                    labels,
+                    key=widget_key
                 )
 
                 selected_values = [
@@ -263,7 +262,6 @@ with st.form("damage_report_form"):
                 max_files = field.get("max_files", 1)
                 accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
 
-                # Convert MIME types to Streamlit extensions
                 file_types = []
                 for mime_type in accept:
                     if mime_type == "image/jpeg":
@@ -276,7 +274,8 @@ with st.form("damage_report_form"):
                 files = st.file_uploader(
                     label,
                     type=file_types,
-                    accept_multiple_files=max_files > 1
+                    accept_multiple_files=max_files > 1,
+                    key=widget_key
                 )
 
                 raw_answers[field_id] = files
@@ -286,7 +285,10 @@ with st.form("damage_report_form"):
             # Date
             # -----------------------------
             elif field_type == "date":
-                raw_answers[field_id] = st.date_input(label)
+                raw_answers[field_id] = st.date_input(
+                    label,
+                    key=widget_key
+                )
 
             # -----------------------------
             # Location / coordinates
@@ -294,7 +296,8 @@ with st.form("damage_report_form"):
             elif field_type == "location":
                 raw_answers[field_id] = st.text_input(
                     label,
-                    placeholder=placeholder or "47.3769, 8.5417"
+                    placeholder=placeholder or "47.3769, 8.5417",
+                    key=widget_key
                 )
 
             # -----------------------------
@@ -308,7 +311,7 @@ with st.form("damage_report_form"):
 
         st.write("")
 
-    submitted = st.form_submit_button("Submit report")
+    submitted = st.form_submit_button(t("button.submit_report", language))
 
 
 # -----------------------------
@@ -436,7 +439,6 @@ if submitted:
 **Contact:** {reporter.get("contact", "-")}
 """)
 
-        # Download report as JSON
         st.download_button(
             label="Download report JSON",
             data=json.dumps(report, indent=2, ensure_ascii=False),
