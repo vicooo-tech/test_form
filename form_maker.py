@@ -1,4 +1,3 @@
-import base64
 import json
 import uuid
 from datetime import datetime
@@ -41,10 +40,14 @@ def t(key, language):
 
 
 # -----------------------------
-# AWS POST helper
+# AWS helpers
 # -----------------------------
 
 def send_report_to_aws(report):
+    """
+    Sends final report JSON to AWS_FORM_URL.
+    This should go to DynamoDB through your backend.
+    """
     aws_form_url = st.secrets.get("AWS_FORM_URL")
     aws_api_key = st.secrets.get("AWS_API_KEY")
 
@@ -78,6 +81,79 @@ def send_report_to_aws(report):
                 response_data = response.json()
             except ValueError:
                 response_data = response.text
+
+            return {
+                "success": True,
+                "status_code": response.status_code,
+                "response": response_data
+            }
+
+        return {
+            "success": False,
+            "status_code": response.status_code,
+            "error": response.text
+        }
+
+    except requests.exceptions.RequestException as error:
+        return {
+            "success": False,
+            "error": str(error)
+        }
+
+
+def upload_file_to_aws(uploaded_file, report_id):
+    """
+    Uploads one file to AWS_FILE_UPLOAD_URL.
+    The backend should store the file in S3 and return small metadata,
+    for example: filename, content_type, size_bytes, s3_key, s3_url.
+    """
+    aws_upload_url = st.secrets.get("AWS_FILE_UPLOAD_URL")
+    aws_api_key = st.secrets.get("AWS_API_KEY")
+
+    if not aws_upload_url:
+        return {
+            "success": False,
+            "error": "Missing AWS_FILE_UPLOAD_URL in Streamlit secrets."
+        }
+
+    if not aws_api_key:
+        return {
+            "success": False,
+            "error": "Missing AWS_API_KEY in Streamlit secrets."
+        }
+
+    headers = {
+        "x-api-key": aws_api_key
+    }
+
+    files = {
+        "file": (
+            uploaded_file.name,
+            uploaded_file.getvalue(),
+            uploaded_file.type
+        )
+    }
+
+    data = {
+        "report_id": report_id
+    }
+
+    try:
+        response = requests.post(
+            aws_upload_url,
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=60
+        )
+
+        if 200 <= response.status_code < 300:
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = {
+                    "message": response.text
+                }
 
             return {
                 "success": True,
@@ -192,16 +268,22 @@ def mime_to_extensions(accept_list):
     return file_types
 
 
-def encode_uploaded_file(uploaded_file):
-    file_bytes = uploaded_file.getvalue()
-    encoded = base64.b64encode(file_bytes).decode("utf-8")
-
+def file_metadata_only(uploaded_file):
     return {
         "filename": uploaded_file.name,
         "content_type": uploaded_file.type,
-        "size_bytes": uploaded_file.size,
-        "base64": encoded
+        "size_bytes": uploaded_file.size
     }
+
+
+def normalize_uploaded_files(value):
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    return [value]
 
 
 # -----------------------------
@@ -318,9 +400,6 @@ with st.form("damage_report_form"):
 
             widget_key = f"{language}_{field_id}"
 
-            # -----------------------------
-            # Text input
-            # -----------------------------
             if field_type == "text":
                 raw_answers[field_id] = st.text_input(
                     label,
@@ -328,9 +407,6 @@ with st.form("damage_report_form"):
                     key=widget_key
                 )
 
-            # -----------------------------
-            # Textarea
-            # -----------------------------
             elif field_type == "textarea":
                 raw_answers[field_id] = st.text_area(
                     label,
@@ -338,9 +414,6 @@ with st.form("damage_report_form"):
                     key=widget_key
                 )
 
-            # -----------------------------
-            # Single choice
-            # -----------------------------
             elif field_type == "single_choice":
                 labels, values = get_option_labels(field, language)
                 display_options = [""] + labels
@@ -358,9 +431,6 @@ with st.form("damage_report_form"):
                     selected_index = labels.index(selected_label)
                     raw_answers[field_id] = values[selected_index]
 
-            # -----------------------------
-            # Multiple choice
-            # -----------------------------
             elif field_type == "multiple_choice":
                 labels, values = get_option_labels(field, language)
 
@@ -377,18 +447,12 @@ with st.form("damage_report_form"):
 
                 raw_answers[field_id] = selected_values
 
-            # -----------------------------
-            # Date
-            # -----------------------------
             elif field_type == "date":
                 raw_answers[field_id] = st.date_input(
                     label,
                     key=widget_key
                 )
 
-            # -----------------------------
-            # Location / coordinates
-            # -----------------------------
             elif field_type == "location":
                 raw_answers[field_id] = st.text_input(
                     label,
@@ -396,22 +460,17 @@ with st.form("damage_report_form"):
                     key=widget_key
                 )
 
-            # -----------------------------
-            # File upload
-            # -----------------------------
             elif field_type == "file":
                 max_files = field.get("max_files", 1)
                 accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
                 file_types = mime_to_extensions(accept)
 
-                uploaded = st.file_uploader(
+                raw_answers[field_id] = st.file_uploader(
                     label,
                     type=file_types,
                     accept_multiple_files=max_files > 1,
                     key=widget_key
                 )
-
-                raw_answers[field_id] = uploaded
 
             else:
                 st.warning(f"Unsupported field type: {field_type}")
@@ -449,6 +508,7 @@ if submitted:
 
     else:
         report = {}
+        file_fields_to_upload = []
 
         # Map raw answers into nested database structure
         for section in schema["sections"]:
@@ -462,18 +522,21 @@ if submitted:
 
                 value = raw_answers.get(field_id)
 
-                # Convert date object to string
                 if field_type == "date" and value is not None:
                     value = value.isoformat()
 
-                # Convert uploaded files to JSON-safe base64 objects
                 if field_type == "file":
-                    if isinstance(value, list):
-                        value = [encode_uploaded_file(file) for file in value]
-                    elif value is not None:
-                        value = [encode_uploaded_file(value)]
-                    else:
-                        value = []
+                    uploaded_files = normalize_uploaded_files(value)
+
+                    # Put only small metadata in the report for now.
+                    # After upload succeeds, we replace it with backend/S3 metadata.
+                    value = [file_metadata_only(file) for file in uploaded_files]
+
+                    file_fields_to_upload.append({
+                        "field_id": field_id,
+                        "database_key": database_key,
+                        "files": uploaded_files
+                    })
 
                 set_nested_value(report, database_key, value)
 
@@ -492,15 +555,53 @@ if submitted:
         map_link = create_google_maps_link(coordinates)
         set_nested_value(report, "location.map_link", map_link)
 
+        # Ensure top-level DynamoDB key exists
+        if not report.get("dynamodbkey"):
+            report_id_for_key = report.get("metadata", {}).get("report_id")
+            report["dynamodbkey"] = report_id_for_key or str(uuid.uuid4())
+
+        report_id = report.get("metadata", {}).get("report_id") or report.get("dynamodbkey")
+
         st.success("Report created successfully.")
 
-        aws_result = send_report_to_aws(report)
+        # -----------------------------
+        # Upload files separately
+        # -----------------------------
 
-        if aws_result["success"]:
-            st.success("Report sent to AWS successfully.")
+        all_uploads_successful = True
+
+        for file_field in file_fields_to_upload:
+            uploaded_refs = []
+
+            if file_field["files"]:
+                with st.spinner("Uploading photos..."):
+                    for uploaded_file in file_field["files"]:
+                        upload_result = upload_file_to_aws(uploaded_file, report_id)
+
+                        if upload_result["success"]:
+                            uploaded_refs.append(upload_result["response"])
+                        else:
+                            all_uploads_successful = False
+                            st.error(f"Could not upload file: {uploaded_file.name}")
+                            st.write(upload_result.get("error"))
+
+                if uploaded_refs:
+                    set_nested_value(report, file_field["database_key"], uploaded_refs)
+
+        # -----------------------------
+        # Send final report JSON
+        # -----------------------------
+
+        if all_uploads_successful:
+            aws_result = send_report_to_aws(report)
+
+            if aws_result["success"]:
+                st.success("Report sent to AWS successfully.")
+            else:
+                st.error("Report could not be sent to AWS.")
+                st.write(aws_result.get("error"))
         else:
-            st.error("Report could not be sent to AWS.")
-            st.write(aws_result.get("error"))
+            st.error("Report was not sent because one or more file uploads failed.")
 
         st.subheader("Generated report JSON")
         st.json(report)
