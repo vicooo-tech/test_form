@@ -1,0 +1,206 @@
+{
+  "form_id": "zurich_damage_report",
+  "version": "1.0",
+  "default_language": "de",
+  "supported_languages": ["de", "en", "it", "fr"],
+  "sections": [
+    {
+      "id": "metadata",
+      "title_key": "section.metadata.title",
+      "fields": [
+        {
+          "id": "report_id",
+          "type": "hidden",
+          "required": true,
+          "auto_generate": true,
+          "generation_strategy": "uuid",
+          "database_key": "metadata.report_id"
+        },
+        {
+          "id": "reported_at",
+          "type": "hidden",
+          "required": true,
+          "auto_generate": true,
+          "generation_strategy": "current_timestamp",
+          "timezone": "Europe/Zurich",
+          "database_key": "metadata.reported_at"
+        }
+      ]
+    },
+    {
+      "id": "reporter",
+      "title_key": "section.reporter.title",
+      "fields": [
+        {
+          "id": "reporter_name",
+          "type": "text",
+          "required": true,
+          "label_key": "field.reporter_name.label",
+          "placeholder_key": "field.reporter_name.placeholder",
+          "database_key": "reporter.name"
+        },
+        {
+          "id": "preferred_contact",
+          "type": "single_choice",
+          "required": true,
+          "label_key": "field.preferred_contact.label",
+          "options": [
+            {
+              "value": "whatsapp",
+              "label_key": "option.contact.whatsapp"
+            },
+            {
+              "value": "phone",
+              "label_key": "option.contact.phone"
+            },
+            {
+              "value": "email",
+              "label_key": "option.contact.email"
+            }
+          ],
+          "database_key": "reporter.preferred_contact"
+        },
+        {
+          "id": "contact_value",
+          "type": "text",
+          "required": true,
+          "label_key": "field.contact_value.label",
+          "placeholder_key": "field.contact_value.placeholder",
+          "database_key": "reporter.contact"
+        }
+      ]
+    },
+    {
+      "id": "location",
+      "title_key": "section.location.title",
+      "fields": [
+        {
+          "id": "coordinates",
+          "type": "location",
+          "required": true,
+          "label_key": "field.coordinates.label",
+          "placeholder_key": "field.coordinates.placeholder",
+          "format": {
+            "latitude": "number",
+            "longitude": "number"
+          },
+          "database_key": "location.coordinates"
+        }
+      ]
+    },
+    {
+      "id": "damage",
+      "title_key": "section.damage.title",
+      "fields": [
+        {
+          "id": "damage_category",
+          "type": "single_choice",
+          "required": true,
+          "label_key": "field.damage_category.label",
+          "options": [
+            {
+              "value": "road_sidewalk_damage",
+              "label_key": "option.damage_category.road_damage",
+              "department_hint": "road_maintenance"
+            },
+            {
+              "value": "streetlight_problem",
+              "label_key": "option.damage_category.streetlight_problem",
+              "department_hint": "public_lighting"
+            },
+            {
+              "value": "trash_or_dumping",
+              "label_key": "option.damage_category.trash_or_dumping",
+              "department_hint": "waste_management"
+            },
+            {
+              "value": "graffiti",
+              "label_key": "option.damage_category.graffiti",
+              "department_hint": "cleaning"
+            },
+            {
+              "value": "water_or_drainage",
+              "label_key": "option.damage_category.water_or_drainage",
+              "department_hint": "water_department"
+            },
+            {
+              "value": "park_or_tree",
+              "label_key": "option.damage_category.park_or_tree",
+              "department_hint": "parks_green_spaces"
+            },
+            {
+              "value": "public_transport",
+              "label_key": "option.damage_category.public_transport_stop",
+              "department_hint": "public_transport_infrastructure"
+            }
+          ],
+          "database_key": "damage.category"
+        },
+        {
+          "id": "damage_title",
+          "type": "text",
+          "required": true,
+          "label_key": "field.damage_title.label",
+          "placeholder_key": "field.damage_title.placeholder",
+          "database_key": "damage.title"
+        },
+        {
+          "id": "damage_description",
+          "type": "textarea",
+          "required": true,
+          "label_key": "field.damage_description.label",
+          "database_key": "damage.description"
+        }
+      ]
+    },
+    {
+      "id": "media",
+      "title_key": "section.media.title",
+      "fields": [
+        {
+          "id": "damage_photo",
+          "type": "file",
+          "required": true,
+          "max_files": 5,
+          "accept": ["image/jpeg", "image/png", "image/webp"],
+          "label_key": "field.damage_photo.label",
+          "database_key": "media.photos"
+        }
+      ]
+    },
+    {
+      "id": "extra",
+      "title_key": "section.extra.title",
+      "fields": [
+        {
+          "id": "already_reported",
+          "type": "single_choice",
+          "required": false,
+          "label_key": "field.already_reported.label",
+          "options": [
+            {
+              "value": "yes",
+              "label_key": "option.common.yes"
+            },
+            {
+              "value": "no",
+              "label_key": "option.common.no"
+            },
+            {
+              "value": "unknown",
+              "label_key": "option.common.unknown"
+            }
+          ],
+          "database_key": "metadata.already_reported"
+        },
+        {
+          "id": "additional_notes",
+          "type": "textarea",
+          "required": false,
+          "label_key": "field.additional_notes.label",
+          "database_key": "metadata.additional_notes"
+        }
+      ]
+    }
+  ]
+}

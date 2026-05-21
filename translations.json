@@ -1,0 +1,232 @@
+{
+  "section.metadata.title": {
+    "de": "Systeminformationen",
+    "en": "System information",
+    "it": "Informazioni di sistema",
+    "fr": "Informations système"
+  },
+  "section.reporter.title": {
+    "de": "Kontaktinformationen",
+    "en": "Contact information",
+    "it": "Informazioni di contatto",
+    "fr": "Informations de contact"
+  },
+  "section.location.title": {
+    "de": "Ort des Schadens",
+    "en": "Location of the damage",
+    "it": "Luogo del danno",
+    "fr": "Lieu du dommage"
+  },
+  "section.damage.title": {
+    "de": "Beschreibung des Schadens",
+    "en": "Damage description",
+    "it": "Descrizione del danno",
+    "fr": "Description du dommage"
+  },
+  "section.media.title": {
+    "de": "Fotos",
+    "en": "Photos",
+    "it": "Foto",
+    "fr": "Photos"
+  },
+  "section.extra.title": {
+    "de": "Weitere Angaben",
+    "en": "Additional information",
+    "it": "Informazioni aggiuntive",
+    "fr": "Informations supplémentaires"
+  },
+
+  "field.reporter_name.label": {
+    "de": "Wie heissen Sie?",
+    "en": "What is your name?",
+    "it": "Come si chiama?",
+    "fr": "Comment vous appelez-vous ?"
+  },
+  "field.reporter_name.placeholder": {
+    "de": "Vor- und Nachname",
+    "en": "First and last name",
+    "it": "Nome e cognome",
+    "fr": "Prénom et nom"
+  },
+
+  "field.preferred_contact.label": {
+    "de": "Wie sollen wir Sie kontaktieren?",
+    "en": "How should we contact you?",
+    "it": "Come dovremmo contattarla?",
+    "fr": "Comment devons-nous vous contacter ?"
+  },
+
+  "field.contact_value.label": {
+    "de": "Bitte geben Sie Ihre Telefonnummer oder E-Mail-Adresse an.",
+    "en": "Please enter your phone number or email address.",
+    "it": "Inserisca il suo numero di telefono o indirizzo e-mail.",
+    "fr": "Veuillez saisir votre numéro de téléphone ou votre adresse e-mail."
+  },
+  "field.contact_value.placeholder": {
+    "de": "+41 79 123 45 67 oder name@email.com",
+    "en": "+41 79 123 45 67 or name@email.com",
+    "it": "+41 79 123 45 67 o nome@email.com",
+    "fr": "+41 79 123 45 67 ou nom@email.com"
+  },
+
+  "field.coordinates.label": {
+    "de": "Bitte teilen Sie den genauen Standort des Schadens.",
+    "en": "Please share the exact location of the damage.",
+    "it": "Condivida la posizione esatta del danno.",
+    "fr": "Veuillez partager l’emplacement exact du dommage."
+  },
+  "field.coordinates.placeholder": {
+    "de": "Breitengrad und Längengrad, z. B. 47.3769, 8.5417",
+    "en": "Latitude and longitude, e.g. 47.3769, 8.5417",
+    "it": "Latitudine e longitudine, ad es. 47.3769, 8.5417",
+    "fr": "Latitude et longitude, par ex. 47.3769, 8.5417"
+  },
+
+  "field.address.label": {
+    "de": "Wo befindet sich der Schaden?",
+    "en": "Where is the damage located?",
+    "it": "Dove si trova il danno?",
+    "fr": "Où se trouve le dommage ?"
+  },
+  "field.address.placeholder": {
+    "de": "Strasse, Hausnummer oder nächster Ort",
+    "en": "Street, house number, or nearest place",
+    "it": "Via, numero civico o luogo più vicino",
+    "fr": "Rue, numéro ou lieu le plus proche"
+  },
+
+  "field.damage_category.label": {
+    "de": "Um welche Art von Problem handelt es sich?",
+    "en": "What type of issue is it?",
+    "it": "Di che tipo di problema si tratta?",
+    "fr": "De quel type de problème s’agit-il ?"
+  },
+
+  "field.damage_title.label": {
+    "de": "Kurzer Titel des Problems",
+    "en": "Short title of the issue",
+    "it": "Titolo breve del problema",
+    "fr": "Titre court du problème"
+  },
+  "field.damage_title.placeholder": {
+    "de": "Zum Beispiel: Grosses Schlagloch",
+    "en": "For example: Large pothole",
+    "it": "Per esempio: grande buca",
+    "fr": "Par exemple : grand nid-de-poule"
+  },
+
+  "field.damage_description.label": {
+    "de": "Beschreiben Sie den Schaden.",
+    "en": "Describe the damage.",
+    "it": "Descriva il danno.",
+    "fr": "Décrivez le dommage."
+  },
+
+  "field.damage_photo.label": {
+    "de": "Bitte laden Sie mindestens ein Foto des Schadens hoch.",
+    "en": "Please upload at least one photo of the damage.",
+    "it": "Carichi almeno una foto del danno.",
+    "fr": "Veuillez télécharger au moins une photo du dommage."
+  },
+
+  "field.already_reported.label": {
+    "de": "Wurde das Problem bereits gemeldet?",
+    "en": "Has this issue already been reported?",
+    "it": "Il problema è già stato segnalato?",
+    "fr": "Ce problème a-t-il déjà été signalé ?"
+  },
+
+  "field.additional_notes.label": {
+    "de": "Gibt es sonst noch etwas, das wir wissen sollten?",
+    "en": "Is there anything else we should know?",
+    "it": "C’è qualcos’altro che dovremmo sapere?",
+    "fr": "Y a-t-il autre chose que nous devrions savoir ?"
+  },
+
+  "option.contact.whatsapp": {
+    "de": "WhatsApp",
+    "en": "WhatsApp",
+    "it": "WhatsApp",
+    "fr": "WhatsApp"
+  },
+  "option.contact.phone": {
+    "de": "Telefon",
+    "en": "Phone",
+    "it": "Telefono",
+    "fr": "Téléphone"
+  },
+  "option.contact.email": {
+    "de": "E-Mail",
+    "en": "Email",
+    "it": "E-mail",
+    "fr": "E-mail"
+  },
+
+  "option.damage_category.road_damage": {
+    "de": "Strassen- oder Trottoirschaden",
+    "en": "Road or sidewalk damage",
+    "it": "Danno alla strada o al marciapiede",
+    "fr": "Dommage à la route ou au trottoir"
+  },
+  "option.damage_category.streetlight_problem": {
+    "de": "Problem mit der Strassenbeleuchtung",
+    "en": "Streetlight problem",
+    "it": "Problema di illuminazione pubblica",
+    "fr": "Problème d’éclairage public"
+  },
+  "option.damage_category.trash_or_dumping": {
+    "de": "Abfall oder illegale Entsorgung",
+    "en": "Trash or illegal dumping",
+    "it": "Rifiuti o scarico illegale",
+    "fr": "Déchets ou dépôt illégal"
+  },
+  "option.damage_category.graffiti": {
+    "de": "Graffiti",
+    "en": "Graffiti",
+    "it": "Graffiti",
+    "fr": "Graffiti"
+  },
+  "option.damage_category.water_or_drainage": {
+    "de": "Wasserleck oder Abflussproblem",
+    "en": "Water leak or drainage issue",
+    "it": "Perdita d’acqua o problema di scarico",
+    "fr": "Fuite d’eau ou problème d’évacuation"
+  },
+  "option.damage_category.park_or_tree": {
+    "de": "Park, Baum oder Grünfläche",
+    "en": "Park, tree, or green area",
+    "it": "Parco, albero o area verde",
+    "fr": "Parc, arbre ou espace vert"
+  },
+  "option.damage_category.public_transport_stop": {
+    "de": "Haltestelle oder öffentlicher Verkehr",
+    "en": "Public transport stop or transit issue",
+    "it": "Fermata o problema del trasporto pubblico",
+    "fr": "Arrêt ou problème de transport public"
+  },
+
+  "option.common.yes": {
+    "de": "Ja",
+    "en": "Yes",
+    "it": "Sì",
+    "fr": "Oui"
+  },
+  "option.common.no": {
+    "de": "Nein",
+    "en": "No",
+    "it": "No",
+    "fr": "Non"
+  },
+  "option.common.unknown": {
+    "de": "Nicht sicher",
+    "en": "Not sure",
+    "it": "Non sicuro",
+    "fr": "Pas sûr"
+  },
+  "option.common.other": {
+    "de": "Anderes",
+    "en": "Other",
+    "it": "Altro",
+    "fr": "Autre"
+  }
+}
