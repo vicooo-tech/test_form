@@ -313,28 +313,28 @@ with st.form("damage_report_form"):
             # -----------------------------
             # File upload
             # -----------------------------
-            elif field_type == "file":
-                max_files = field.get("max_files", 1)
-                accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
+            #elif field_type == "file":
+             #   max_files = field.get("max_files", 1)
+              #  accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
+#
+             #   file_types = []
+            ##    for mime_type in accept:
+              #      if mime_type == "image/jpeg":
+               #         file_types.extend(["jpg", "jpeg"])
+            #        elif mime_type == "image/png":
+                 #       file_types.append("png")
+               #     elif mime_type == "image/webp":
+                 #       file_types.append("webp")
 
-                file_types = []
-                for mime_type in accept:
-                    if mime_type == "image/jpeg":
-                        file_types.extend(["jpg", "jpeg"])
-                    elif mime_type == "image/png":
-                        file_types.append("png")
-                    elif mime_type == "image/webp":
-                        file_types.append("webp")
+              #  files = st.file_uploader(
+                #    label,
+               #     type=file_types,
+               #     accept_multiple_files=max_files > 1,
+                #    key=widget_key
+              #  )
 
-                files = st.file_uploader(
-                    label,
-                    type=file_types,
-                    accept_multiple_files=max_files > 1,
-                    key=widget_key
-                )
-
-                raw_answers[field_id] = files
-                uploaded_files[field_id] = files
+              #  raw_answers[field_id] = files
+              #  uploaded_files[field_id] = files
 
             # -----------------------------
             # Date
