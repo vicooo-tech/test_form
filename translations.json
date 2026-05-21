@@ -229,4 +229,18 @@
     "it": "Altro",
     "fr": "Autre"
   }
+  {
+  "button.submit_report": {
+    "de": "Meldung absenden",
+    "en": "Submit report",
+    "it": "Invia segnalazione",
+    "fr": "Envoyer le signalement"
+  },
+  "app.title": {
+    "de": "Schadensmeldung Zürich",
+    "en": "Zurich Damage Report",
+    "it": "Segnalazione danni Zurigo",
+    "fr": "Signalement de dommage Zurich"
+  }
+}
 }
