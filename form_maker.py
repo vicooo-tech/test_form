@@ -297,26 +297,29 @@ with st.form("damage_report_form"):
             elif field_type == "location":
                 st.write(label)
             
-                location_data = get_geolocation()
+                if get_geolocation is not None:
+                    location_data = get_geolocation()
             
-                if location_data:
-                    latitude = location_data["coords"]["latitude"]
-                    longitude = location_data["coords"]["longitude"]
+                    if location_data:
+                        latitude = location_data["coords"]["latitude"]
+                        longitude = location_data["coords"]["longitude"]
             
-                    coordinates_value = f"{latitude}, {longitude}"
+                        coordinates_value = f"{latitude}, {longitude}"
             
-                    st.success(f"Location detected: {coordinates_value}")
+                        # Only auto-fill if the field is still empty
+                        if not st.session_state.get(widget_key):
+                            st.session_state[widget_key] = coordinates_value
             
-                    raw_answers[field_id] = coordinates_value
-            
-                    st.session_state[widget_key] = coordinates_value
+                        st.success(f"Location detected: {coordinates_value}")
             
                 else:
-                    raw_answers[field_id] = st.text_input(
-                        t("field.coordinates.manual_fallback", language),
-                        placeholder=placeholder or "47.3769, 8.5417",
-                        key=widget_key
-                    )
+                    st.warning("Location sharing package is not installed. Please enter coordinates manually.")
+            
+                raw_answers[field_id] = st.text_input(
+                    t("field.coordinates.manual_fallback", language),
+                    placeholder=placeholder or "47.3769, 8.5417",
+                    key=widget_key
+                )
 
             # -----------------------------
             # Hidden
