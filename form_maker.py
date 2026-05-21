@@ -196,7 +196,6 @@ with st.form("damage_report_form"):
                 placeholder = t(field["placeholder_key"], language)
 
             widget_key = f"{language}_{field_id}"
-            st.rerun()
 
             # -----------------------------
             # Text input
