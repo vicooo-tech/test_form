@@ -3,9 +3,8 @@ import uuid
 from datetime import datetime
 from streamlit_js_eval import get_geolocation
 from zoneinfo import ZoneInfo
-
+import requests
 import streamlit as st
-
 
 # -----------------------------
 # Load JSON files
@@ -23,7 +22,62 @@ translations = load_json("translations.json")
 # -----------------------------
 # Translation helper
 # -----------------------------
+def send_report_to_aws(report):
+    """
+    Sends the generated report JSON to the AWS endpoint using POST.
+    Requires AWS_FORM_URL and AWS_API_KEY in Streamlit secrets.
+    """
+    aws_form_url = st.secrets.get("AWS_FORM_URL")
+    aws_api_key = st.secrets.get("AWS_API_KEY")
 
+    if not aws_form_url:
+        return {
+            "success": False,
+            "error": "Missing AWS_FORM_URL in Streamlit secrets."
+        }
+
+    if not aws_api_key:
+        return {
+            "success": False,
+            "error": "Missing AWS_API_KEY in Streamlit secrets."
+        }
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": aws_api_key
+    }
+
+    try:
+        response = requests.post(
+            aws_form_url,
+            headers=headers,
+            json=report,
+            timeout=15
+        )
+
+        if 200 <= response.status_code < 300:
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = response.text
+
+            return {
+                "success": True,
+                "status_code": response.status_code,
+                "response": response_data
+            }
+
+        return {
+            "success": False,
+            "status_code": response.status_code,
+            "error": response.text
+        }
+
+    except requests.exceptions.RequestException as error:
+        return {
+            "success": False,
+            "error": str(error)
+        }
 def t(key, language):
     """
     Translate a translation key into the selected language.
@@ -309,6 +363,7 @@ with st.form("damage_report_form"):
                         # Only auto-fill if the field is still empty
                         if not st.session_state.get(widget_key):
                             st.session_state[widget_key] = coordinates_value
+                            st.rerun()
             
                         st.success(f"Location detected: {coordinates_value}")
             
@@ -408,6 +463,14 @@ if submitted:
 
         st.success("Report created successfully.")
 
+        aws_result = send_report_to_aws(report)
+        
+        if aws_result["success"]:
+            st.success("Report sent to AWS successfully.")
+        else:
+            st.error("Report could not be sent to AWS.")
+            st.write(aws_result.get("error"))
+        
         st.subheader("Generated report JSON")
         st.json(report)
 
