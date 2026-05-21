@@ -1,4 +1,23 @@
 {
+  "app.title": {
+    "de": "Schadensmeldung Zürich",
+    "en": "Zurich Damage Report",
+    "it": "Segnalazione danni Zurigo",
+    "fr": "Signalement de dommage Zurich"
+  },
+  "app.caption": {
+    "de": "Automatisch aus dem JSON-Schema generiert",
+    "en": "Generated automatically from JSON schema",
+    "it": "Generato automaticamente dallo schema JSON",
+    "fr": "Généré automatiquement à partir du schéma JSON"
+  },
+  "button.submit_report": {
+    "de": "Meldung absenden",
+    "en": "Submit report",
+    "it": "Invia segnalazione",
+    "fr": "Envoyer le signalement"
+  },
+
   "section.metadata.title": {
     "de": "Systeminformationen",
     "en": "System information",
@@ -228,19 +247,5 @@
     "en": "Other",
     "it": "Altro",
     "fr": "Autre"
-  },
-
-  "button.submit_report": {
-    "de": "Meldung absenden",
-    "en": "Submit report",
-    "it": "Invia segnalazione",
-    "fr": "Envoyer le signalement"
-  },
-  "app.title": {
-    "de": "Schadensmeldung Zürich",
-    "en": "Zurich Damage Report",
-    "it": "Segnalazione danni Zurigo",
-    "fr": "Signalement de dommage Zurich"
   }
-}
 }
