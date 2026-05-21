@@ -153,21 +153,7 @@
         }
       ]
     },
-    {
-      "id": "media",
-      "title_key": "section.media.title",
-      "fields": [
-        {
-          "id": "damage_photo",
-          "type": "file",
-          "required": true,
-          "max_files": 5,
-          "accept": ["image/jpeg", "image/png", "image/webp"],
-          "label_key": "field.damage_photo.label",
-          "database_key": "media.photos"
-        }
-      ]
-    },
+    
     {
       "id": "extra",
       "title_key": "section.extra.title",
