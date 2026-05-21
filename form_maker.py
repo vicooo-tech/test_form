@@ -1,10 +1,12 @@
 import json
 import uuid
 from datetime import datetime
-from streamlit_js_eval import get_geolocation
 from zoneinfo import ZoneInfo
+
 import requests
 import streamlit as st
+from streamlit_js_eval import get_geolocation
+
 
 # -----------------------------
 # Load JSON files
@@ -22,11 +24,26 @@ translations = load_json("translations.json")
 # -----------------------------
 # Translation helper
 # -----------------------------
+
+def t(key, language):
+    item = translations.get(key, {})
+
+    if not item:
+        return key
+
+    return (
+        item.get(language)
+        or item.get(schema.get("default_language", "de"))
+        or item.get("en")
+        or key
+    )
+
+
+# -----------------------------
+# AWS POST helper
+# -----------------------------
+
 def send_report_to_aws(report):
-    """
-    Sends the generated report JSON to the AWS endpoint using POST.
-    Requires AWS_FORM_URL and AWS_API_KEY in Streamlit secrets.
-    """
     aws_form_url = st.secrets.get("AWS_FORM_URL")
     aws_api_key = st.secrets.get("AWS_API_KEY")
 
@@ -78,22 +95,6 @@ def send_report_to_aws(report):
             "success": False,
             "error": str(error)
         }
-def t(key, language):
-    """
-    Translate a translation key into the selected language.
-    Falls back to default language, then English, then key itself.
-    """
-    item = translations.get(key, {})
-
-    if not item:
-        return key
-
-    return (
-        item.get(language)
-        or item.get(schema.get("default_language", "de"))
-        or item.get("en")
-        or key
-    )
 
 
 # -----------------------------
@@ -120,6 +121,7 @@ def set_nested_value(data, dotted_key, value):
     for key in keys[:-1]:
         if key not in current:
             current[key] = {}
+
         current = current[key]
 
     current[keys[-1]] = value
@@ -219,11 +221,40 @@ st.divider()
 
 
 # -----------------------------
+# Geolocation outside the form
+# -----------------------------
+
+coordinates_widget_key = f"{language}_coordinates"
+
+st.subheader(t("section.location.title", language))
+st.write(t("field.coordinates.label", language))
+
+try:
+    location_data = get_geolocation()
+except Exception:
+    location_data = None
+    st.warning(t("field.coordinates.manual_fallback", language))
+
+if location_data:
+    latitude = location_data["coords"]["latitude"]
+    longitude = location_data["coords"]["longitude"]
+
+    coordinates_value = f"{latitude}, {longitude}"
+
+    if st.session_state.get(coordinates_widget_key) != coordinates_value:
+        st.session_state[coordinates_widget_key] = coordinates_value
+        st.rerun()
+
+    st.success(f"Location detected: {coordinates_value}")
+
+st.divider()
+
+
+# -----------------------------
 # Render form
 # -----------------------------
 
 raw_answers = {}
-uploaded_files = {}
 
 with st.form("damage_report_form"):
     for section in schema["sections"]:
@@ -234,12 +265,20 @@ with st.form("damage_report_form"):
                 raw_answers[field["id"]] = generate_system_value(field)
             continue
 
-        st.subheader(t(section["title_key"], language))
+        # Location section title is already shown above
+        if section["id"] != "location":
+            st.subheader(t(section["title_key"], language))
 
         for field in section.get("fields", []):
             field_id = field["id"]
             field_type = field["type"]
             required = field.get("required", False)
+
+            # Hidden fields do not have label_key
+            if field_type == "hidden":
+                raw_answers[field_id] = generate_system_value(field)
+                continue
+
             label = t(field["label_key"], language)
 
             if required:
@@ -311,32 +350,6 @@ with st.form("damage_report_form"):
                 raw_answers[field_id] = selected_values
 
             # -----------------------------
-            # File upload
-            # -----------------------------
-            #elif field_type == "file":
-             #   max_files = field.get("max_files", 1)
-              #  accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
-#
-             #   file_types = []
-            ##    for mime_type in accept:
-              #      if mime_type == "image/jpeg":
-               #         file_types.extend(["jpg", "jpeg"])
-            #        elif mime_type == "image/png":
-                 #       file_types.append("png")
-               #     elif mime_type == "image/webp":
-                 #       file_types.append("webp")
-
-              #  files = st.file_uploader(
-                #    label,
-               #     type=file_types,
-               #     accept_multiple_files=max_files > 1,
-                #    key=widget_key
-              #  )
-
-              #  raw_answers[field_id] = files
-              #  uploaded_files[field_id] = files
-
-            # -----------------------------
             # Date
             # -----------------------------
             elif field_type == "date":
@@ -349,38 +362,17 @@ with st.form("damage_report_form"):
             # Location / coordinates
             # -----------------------------
             elif field_type == "location":
-                st.write(label)
-            
-                if get_geolocation is not None:
-                    location_data = get_geolocation()
-            
-                    if location_data:
-                        latitude = location_data["coords"]["latitude"]
-                        longitude = location_data["coords"]["longitude"]
-            
-                        coordinates_value = f"{latitude}, {longitude}"
-            
-                        # Only auto-fill if the field is still empty
-                        if not st.session_state.get(widget_key):
-                            st.session_state[widget_key] = coordinates_value
-                            st.rerun()
-            
-                        st.success(f"Location detected: {coordinates_value}")
-            
-                else:
-                    st.warning("Location sharing package is not installed. Please enter coordinates manually.")
-            
                 raw_answers[field_id] = st.text_input(
-                    t("field.coordinates.manual_fallback", language),
+                    label,
                     placeholder=placeholder or "47.3769, 8.5417",
                     key=widget_key
                 )
 
             # -----------------------------
-            # Hidden
+            # File fields are ignored completely
             # -----------------------------
-            elif field_type == "hidden":
-                raw_answers[field_id] = generate_system_value(field)
+            elif field_type == "file":
+                continue
 
             else:
                 st.warning(f"Unsupported field type: {field_type}")
@@ -400,6 +392,10 @@ if submitted:
     for section in schema["sections"]:
         for field in section.get("fields", []):
             field_id = field["id"]
+
+            # Ignore removed/disabled file fields
+            if field.get("type") == "file":
+                continue
 
             if field.get("required", False):
                 value = raw_answers.get(field_id)
@@ -423,25 +419,20 @@ if submitted:
         for section in schema["sections"]:
             for field in section.get("fields", []):
                 field_id = field["id"]
+                field_type = field.get("type")
                 database_key = field.get("database_key")
+
+                # Ignore file fields completely
+                if field_type == "file":
+                    continue
 
                 if not database_key:
                     continue
 
                 value = raw_answers.get(field_id)
 
-                # For uploaded files, store only file names for now
-                # Later, replace this with S3 URLs
-                if field["type"] == "file":
-                    if isinstance(value, list):
-                        value = [file.name for file in value]
-                    elif value is not None:
-                        value = [value.name]
-                    else:
-                        value = []
-
                 # Convert date object to string
-                if field["type"] == "date" and value is not None:
+                if field_type == "date" and value is not None:
                     value = value.isoformat()
 
                 set_nested_value(report, database_key, value)
@@ -464,13 +455,13 @@ if submitted:
         st.success("Report created successfully.")
 
         aws_result = send_report_to_aws(report)
-        
+
         if aws_result["success"]:
             st.success("Report sent to AWS successfully.")
         else:
             st.error("Report could not be sent to AWS.")
             st.write(aws_result.get("error"))
-        
+
         st.subheader("Generated report JSON")
         st.json(report)
 
@@ -480,7 +471,6 @@ if submitted:
         reporter = report.get("reporter", {})
         location = report.get("location", {})
         damage = report.get("damage", {})
-        media = report.get("media", {})
         classification = report.get("classification", {})
 
         st.markdown(f"""
@@ -507,12 +497,6 @@ if submitted:
 
 **Description:**  
 {damage.get("description", "-")}
-
----
-
-### Photos
-
-{media.get("photos", "-")}
 
 ---
 
