@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime
+from streamlit_js_eval import get_geolocation
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -294,11 +295,28 @@ with st.form("damage_report_form"):
             # Location / coordinates
             # -----------------------------
             elif field_type == "location":
-                raw_answers[field_id] = st.text_input(
-                    label,
-                    placeholder=placeholder or "47.3769, 8.5417",
-                    key=widget_key
-                )
+                st.write(label)
+            
+                location_data = get_geolocation()
+            
+                if location_data:
+                    latitude = location_data["coords"]["latitude"]
+                    longitude = location_data["coords"]["longitude"]
+            
+                    coordinates_value = f"{latitude}, {longitude}"
+            
+                    st.success(f"Location detected: {coordinates_value}")
+            
+                    raw_answers[field_id] = coordinates_value
+            
+                    st.session_state[widget_key] = coordinates_value
+            
+                else:
+                    raw_answers[field_id] = st.text_input(
+                        t("field.coordinates.manual_fallback", language),
+                        placeholder=placeholder or "47.3769, 8.5417",
+                        key=widget_key
+                    )
 
             # -----------------------------
             # Hidden
