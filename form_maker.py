@@ -44,10 +44,6 @@ def t(key, language):
 # -----------------------------
 
 def send_report_to_aws(report):
-    """
-    Sends final report JSON to AWS_FORM_URL.
-    This should go to DynamoDB through your backend.
-    """
     aws_form_url = st.secrets.get("AWS_FORM_URL")
     aws_api_key = st.secrets.get("AWS_API_KEY")
 
@@ -69,12 +65,18 @@ def send_report_to_aws(report):
     }
 
     try:
+        print("Sending final report to AWS_FORM_URL:", aws_form_url)
+        print("Report keys:", list(report.keys()))
+
         response = requests.post(
             aws_form_url,
             headers=headers,
             json=report,
             timeout=30
         )
+
+        print("Report POST status code:", response.status_code)
+        print("Report POST response text:", response.text)
 
         if 200 <= response.status_code < 300:
             try:
@@ -95,6 +97,7 @@ def send_report_to_aws(report):
         }
 
     except requests.exceptions.RequestException as error:
+        print("Report POST request exception:", str(error))
         return {
             "success": False,
             "error": str(error)
@@ -126,19 +129,26 @@ def upload_file_to_aws(uploaded_file, report_id):
         }
 
     try:
-        # Step 1: Get presigned S3 URL from API Gateway
         presign_headers = {
             "x-api-key": aws_api_key
         }
+
+        print("----- IMAGE PRESIGN REQUEST -----")
+        print("AWS_IMAGE_URL:", aws_image_url)
+        print("Report ID:", report_id)
+        print("Upload filename:", uploaded_file.name)
+        print("Upload file type from Streamlit:", uploaded_file.type)
+        print("Upload file size:", uploaded_file.size)
 
         presign_response = requests.get(
             aws_image_url,
             headers=presign_headers,
             timeout=30
         )
-        print("AWS_IMAGE_URL:", aws_image_url)
+
         print("Presign status code:", presign_response.status_code)
         print("Presign response text:", presign_response.text)
+
         if not (200 <= presign_response.status_code < 300):
             return {
                 "success": False,
@@ -149,6 +159,7 @@ def upload_file_to_aws(uploaded_file, report_id):
         try:
             presign_data = presign_response.json()
         except ValueError:
+            print("Presign response was not valid JSON.")
             return {
                 "success": False,
                 "error": "AWS_IMAGE_URL did not return valid JSON."
@@ -156,6 +167,9 @@ def upload_file_to_aws(uploaded_file, report_id):
 
         upload_url = presign_data.get("uploadUrl")
         s3_key = presign_data.get("key")
+
+        print("Presigned uploadUrl:", upload_url)
+        print("S3 key:", s3_key)
 
         if not upload_url:
             return {
@@ -169,14 +183,16 @@ def upload_file_to_aws(uploaded_file, report_id):
                 "error": "Presigned URL response is missing key."
             }
 
-        # Step 2: Upload directly to S3 using the returned uploadUrl
         file_bytes = uploaded_file.getvalue()
 
-        # Your Lambda currently signs the URL with ContentType: image/jpeg,
-        # so we must upload with exactly image/jpeg.
         s3_headers = {
             "Content-Type": "image/jpeg"
         }
+
+        print("----- DIRECT S3 PUT REQUEST -----")
+        print("Uploading directly to presigned S3 URL.")
+        print("S3 PUT Content-Type:", s3_headers["Content-Type"])
+        print("S3 PUT byte length:", len(file_bytes))
 
         upload_response = requests.put(
             upload_url,
@@ -184,6 +200,9 @@ def upload_file_to_aws(uploaded_file, report_id):
             data=file_bytes,
             timeout=60
         )
+
+        print("S3 upload status code:", upload_response.status_code)
+        print("S3 upload response text:", upload_response.text)
 
         if not (200 <= upload_response.status_code < 300):
             return {
@@ -205,6 +224,7 @@ def upload_file_to_aws(uploaded_file, report_id):
         }
 
     except requests.exceptions.RequestException as error:
+        print("Image upload request exception:", str(error))
         return {
             "success": False,
             "error": str(error)
@@ -287,16 +307,6 @@ def create_google_maps_link(coordinates):
 
     cleaned = coordinates.replace(" ", "")
     return f"https://www.google.com/maps?q={cleaned}"
-
-
-def mime_to_extensions(accept_list):
-    file_types = []
-
-    for mime_type in accept_list:
-        if mime_type == "image/jpeg":
-            file_types.extend(["jpg", "jpeg"])
-
-    return file_types
 
 
 def file_metadata_only(uploaded_file):
@@ -443,7 +453,13 @@ with st.form("damage_report_form"):
                 )
 
             elif field_type == "single_choice":
-                labels, values = get_option_labels(field, language)
+                labels = []
+                values = []
+
+                for option in field.get("options", []):
+                    labels.append(t(option["label_key"], language))
+                    values.append(option["value"])
+
                 display_options = [""] + labels
 
                 selected_label = st.selectbox(
@@ -460,7 +476,12 @@ with st.form("damage_report_form"):
                     raw_answers[field_id] = values[selected_index]
 
             elif field_type == "multiple_choice":
-                labels, values = get_option_labels(field, language)
+                labels = []
+                values = []
+
+                for option in field.get("options", []):
+                    labels.append(t(option["label_key"], language))
+                    values.append(option["value"])
 
                 selected_labels = st.multiselect(
                     label,
