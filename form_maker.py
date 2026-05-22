@@ -382,11 +382,19 @@ st.write(t("field.coordinates.label", language))
 
 try:
     location_data = get_geolocation()
-except Exception:
+except Exception as error:
     location_data = None
-    st.warning(t("field.coordinates.manual_fallback", language))
+    print("Geolocation exception:", str(error))
 
-if location_data:
+print("Raw location_data:", location_data)
+
+if (
+    location_data
+    and isinstance(location_data, dict)
+    and "coords" in location_data
+    and "latitude" in location_data["coords"]
+    and "longitude" in location_data["coords"]
+):
     latitude = location_data["coords"]["latitude"]
     longitude = location_data["coords"]["longitude"]
 
@@ -398,8 +406,8 @@ if location_data:
 
     st.success(f"Location detected: {coordinates_value}")
 
-st.divider()
-
+else:
+    st.info(t("field.coordinates.manual_fallback", language))
 
 # -----------------------------
 # Render form
