@@ -103,7 +103,7 @@ def send_report_to_aws(report):
 
 def upload_file_to_aws(uploaded_file, report_id):
     """
-    Uploads one file to AWS_FILE_UPLOAD_URL.
+    Uploads one file to AWS_FILE_UPLOAD_URL using PUT.
     The backend should store the file in S3 and return small metadata,
     for example: filename, content_type, size_bytes, s3_key, s3_url.
     """
@@ -139,7 +139,7 @@ def upload_file_to_aws(uploaded_file, report_id):
     }
 
     try:
-        response = requests.post(
+        response = requests.put(
             aws_upload_url,
             headers=headers,
             files=files,
@@ -564,7 +564,7 @@ if submitted:
         st.success("Report created successfully.")
 
         # -----------------------------
-        # Upload files separately
+        # Upload files separately using PUT
         # -----------------------------
 
         all_uploads_successful = True
@@ -588,7 +588,7 @@ if submitted:
                     set_nested_value(report, file_field["database_key"], uploaded_refs)
 
         # -----------------------------
-        # Send final report JSON
+        # Send final report JSON using POST
         # -----------------------------
 
         if all_uploads_successful:
