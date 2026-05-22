@@ -20,7 +20,44 @@ def load_json(path):
 schema = load_json("jason_form_schema.json")
 translations = load_json("translations.json")
 
+# -----------------------------
+# Geolocation outside the form
+# -----------------------------
 
+coordinates_widget_key = f"{language}_coordinates"
+
+st.subheader(t("section.location.title", language))
+st.write(t("field.coordinates.label", language))
+
+try:
+    location_data = get_geolocation()
+except Exception as error:
+    location_data = None
+    print("Geolocation exception:", str(error))
+
+print("Raw location_data:", location_data)
+
+if (
+    location_data
+    and isinstance(location_data, dict)
+    and "coords" in location_data
+    and isinstance(location_data["coords"], dict)
+    and "latitude" in location_data["coords"]
+    and "longitude" in location_data["coords"]
+):
+    latitude = location_data["coords"]["latitude"]
+    longitude = location_data["coords"]["longitude"]
+
+    coordinates_value = f"{latitude}, {longitude}"
+
+    if st.session_state.get(coordinates_widget_key) != coordinates_value:
+        st.session_state[coordinates_widget_key] = coordinates_value
+        st.rerun()
+
+    st.success(f"Location detected: {coordinates_value}")
+
+else:
+    st.info(t("field.coordinates.manual_fallback", language))
 # -----------------------------
 # Translation helper
 # -----------------------------
