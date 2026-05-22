@@ -326,7 +326,6 @@ with top_right:
 # -----------------------------
 
 st.title(t("app.title", language))
-st.caption(t("app.caption", language))
 
 st.divider()
 
