@@ -103,17 +103,20 @@ def send_report_to_aws(report):
 
 def upload_file_to_aws(uploaded_file, report_id):
     """
-    Uploads one file to AWS_FILE_UPLOAD_URL using PUT.
-    The backend should store the file in S3 and return small metadata,
-    for example: filename, content_type, size_bytes, s3_key, s3_url.
+    Uploads one image using the presigned S3 URL flow.
+
+    Step 1: GET AWS_IMAGE_URL from API Gateway/Lambda.
+    Step 2: Receive uploadUrl and key.
+    Step 3: PUT image directly to S3 using uploadUrl.
+    Step 4: Return small metadata for DynamoDB.
     """
-    aws_upload_url = st.secrets.get("AWS_FILE_UPLOAD_URL")
+    aws_image_url = st.secrets.get("AWS_IMAGE_URL")
     aws_api_key = st.secrets.get("AWS_API_KEY")
 
-    if not aws_upload_url:
+    if not aws_image_url:
         return {
             "success": False,
-            "error": "Missing AWS_FILE_UPLOAD_URL in Streamlit secrets."
+            "error": "Missing AWS_IMAGE_URL in Streamlit secrets."
         }
 
     if not aws_api_key:
@@ -122,49 +125,81 @@ def upload_file_to_aws(uploaded_file, report_id):
             "error": "Missing AWS_API_KEY in Streamlit secrets."
         }
 
-    headers = {
-        "x-api-key": aws_api_key
-    }
-
-    files = {
-        "file": (
-            uploaded_file.name,
-            uploaded_file.getvalue(),
-            uploaded_file.type
-        )
-    }
-
-    data = {
-        "report_id": report_id
-    }
-
     try:
-        response = requests.put(
-            aws_upload_url,
-            headers=headers,
-            files=files,
-            data=data,
+        # Step 1: Get presigned S3 URL from API Gateway
+        presign_headers = {
+            "x-api-key": aws_api_key
+        }
+
+        presign_response = requests.get(
+            aws_image_url,
+            headers=presign_headers,
+            timeout=30
+        )
+
+        if not (200 <= presign_response.status_code < 300):
+            return {
+                "success": False,
+                "status_code": presign_response.status_code,
+                "error": presign_response.text
+            }
+
+        try:
+            presign_data = presign_response.json()
+        except ValueError:
+            return {
+                "success": False,
+                "error": "AWS_IMAGE_URL did not return valid JSON."
+            }
+
+        upload_url = presign_data.get("uploadUrl")
+        s3_key = presign_data.get("key")
+
+        if not upload_url:
+            return {
+                "success": False,
+                "error": "Presigned URL response is missing uploadUrl."
+            }
+
+        if not s3_key:
+            return {
+                "success": False,
+                "error": "Presigned URL response is missing key."
+            }
+
+        # Step 2: Upload directly to S3 using the returned uploadUrl
+        file_bytes = uploaded_file.getvalue()
+
+        # Your Lambda currently signs the URL with ContentType: image/jpeg,
+        # so we must upload with exactly image/jpeg.
+        s3_headers = {
+            "Content-Type": "image/jpeg"
+        }
+
+        upload_response = requests.put(
+            upload_url,
+            headers=s3_headers,
+            data=file_bytes,
             timeout=60
         )
 
-        if 200 <= response.status_code < 300:
-            try:
-                response_data = response.json()
-            except ValueError:
-                response_data = {
-                    "message": response.text
-                }
-
+        if not (200 <= upload_response.status_code < 300):
             return {
-                "success": True,
-                "status_code": response.status_code,
-                "response": response_data
+                "success": False,
+                "status_code": upload_response.status_code,
+                "error": upload_response.text
             }
 
         return {
-            "success": False,
-            "status_code": response.status_code,
-            "error": response.text
+            "success": True,
+            "response": {
+                "filename": uploaded_file.name,
+                "content_type": "image/jpeg",
+                "size_bytes": uploaded_file.size,
+                "s3_bucket": "demo-060151519900-us-east-1-an",
+                "s3_region": "us-east-1",
+                "s3_key": s3_key
+            }
         }
 
     except requests.exceptions.RequestException as error:
@@ -258,12 +293,6 @@ def mime_to_extensions(accept_list):
     for mime_type in accept_list:
         if mime_type == "image/jpeg":
             file_types.extend(["jpg", "jpeg"])
-        elif mime_type == "image/png":
-            file_types.append("png")
-        elif mime_type == "image/webp":
-            file_types.append("webp")
-        elif mime_type == "application/pdf":
-            file_types.append("pdf")
 
     return file_types
 
@@ -369,13 +398,11 @@ raw_answers = {}
 with st.form("damage_report_form"):
     for section in schema["sections"]:
 
-        # Do not display metadata/system fields
         if section["id"] == "metadata":
             for field in section.get("fields", []):
                 raw_answers[field["id"]] = generate_system_value(field)
             continue
 
-        # Location section title is already shown above
         if section["id"] != "location":
             st.subheader(t(section["title_key"], language))
 
@@ -461,12 +488,10 @@ with st.form("damage_report_form"):
 
             elif field_type == "file":
                 max_files = field.get("max_files", 1)
-                accept = field.get("accept", ["image/jpeg", "image/png", "image/webp"])
-                file_types = mime_to_extensions(accept)
 
                 raw_answers[field_id] = st.file_uploader(
                     label,
-                    type=file_types,
+                    type=["jpg", "jpeg"],
                     accept_multiple_files=max_files > 1,
                     key=widget_key
                 )
@@ -509,7 +534,6 @@ if submitted:
         report = {}
         file_fields_to_upload = []
 
-        # Map raw answers into nested database structure
         for section in schema["sections"]:
             for field in section.get("fields", []):
                 field_id = field["id"]
@@ -527,8 +551,6 @@ if submitted:
                 if field_type == "file":
                     uploaded_files = normalize_uploaded_files(value)
 
-                    # Put only small metadata in the report for now.
-                    # After upload succeeds, we replace it with backend/S3 metadata.
                     value = [file_metadata_only(file) for file in uploaded_files]
 
                     file_fields_to_upload.append({
@@ -539,22 +561,16 @@ if submitted:
 
                 set_nested_value(report, database_key, value)
 
-        # Add selected language
         set_nested_value(report, "metadata.language", language)
-
-        # Add initial status
         set_nested_value(report, "metadata.status", "new")
 
-        # Add department hint
         department_hint = get_department_hint(schema, raw_answers)
         set_nested_value(report, "classification.responsible_department", department_hint)
 
-        # Add map link
         coordinates = raw_answers.get("coordinates")
         map_link = create_google_maps_link(coordinates)
         set_nested_value(report, "location.map_link", map_link)
 
-        # Ensure top-level DynamoDB key exists
         if not report.get("dynamodbkey"):
             report_id_for_key = report.get("metadata", {}).get("report_id")
             report["dynamodbkey"] = report_id_for_key or str(uuid.uuid4())
@@ -562,10 +578,6 @@ if submitted:
         report_id = report.get("metadata", {}).get("report_id") or report.get("dynamodbkey")
 
         st.success("Report created successfully.")
-
-        # -----------------------------
-        # Upload files separately using PUT
-        # -----------------------------
 
         all_uploads_successful = True
 
@@ -586,10 +598,6 @@ if submitted:
 
                 if uploaded_refs:
                     set_nested_value(report, file_field["database_key"], uploaded_refs)
-
-        # -----------------------------
-        # Send final report JSON using POST
-        # -----------------------------
 
         if all_uploads_successful:
             aws_result = send_report_to_aws(report)
