@@ -20,44 +20,7 @@ def load_json(path):
 schema = load_json("jason_form_schema.json")
 translations = load_json("translations.json")
 
-# -----------------------------
-# Geolocation outside the form
-# -----------------------------
 
-coordinates_widget_key = f"{language}_coordinates"
-
-st.subheader(t("section.location.title", language))
-st.write(t("field.coordinates.label", language))
-
-try:
-    location_data = get_geolocation()
-except Exception as error:
-    location_data = None
-    print("Geolocation exception:", str(error))
-
-print("Raw location_data:", location_data)
-
-if (
-    location_data
-    and isinstance(location_data, dict)
-    and "coords" in location_data
-    and isinstance(location_data["coords"], dict)
-    and "latitude" in location_data["coords"]
-    and "longitude" in location_data["coords"]
-):
-    latitude = location_data["coords"]["latitude"]
-    longitude = location_data["coords"]["longitude"]
-
-    coordinates_value = f"{latitude}, {longitude}"
-
-    if st.session_state.get(coordinates_widget_key) != coordinates_value:
-        st.session_state[coordinates_widget_key] = coordinates_value
-        st.rerun()
-
-    st.success(f"Location detected: {coordinates_value}")
-
-else:
-    st.info(t("field.coordinates.manual_fallback", language))
 # -----------------------------
 # Translation helper
 # -----------------------------
@@ -142,14 +105,6 @@ def send_report_to_aws(report):
 
 
 def upload_file_to_aws(uploaded_file, report_id):
-    """
-    Uploads one image using the presigned S3 URL flow.
-
-    Step 1: GET AWS_IMAGE_URL from API Gateway/Lambda.
-    Step 2: Receive uploadUrl and key.
-    Step 3: PUT image directly to S3 using uploadUrl.
-    Step 4: Return small metadata for DynamoDB.
-    """
     aws_image_url = st.secrets.get("AWS_IMAGE_URL")
     aws_api_key = st.secrets.get("AWS_API_KEY")
 
@@ -429,6 +384,7 @@ if (
     location_data
     and isinstance(location_data, dict)
     and "coords" in location_data
+    and isinstance(location_data["coords"], dict)
     and "latitude" in location_data["coords"]
     and "longitude" in location_data["coords"]
 ):
@@ -445,6 +401,9 @@ if (
 
 else:
     st.info(t("field.coordinates.manual_fallback", language))
+
+st.divider()
+
 
 # -----------------------------
 # Render form
@@ -498,13 +457,7 @@ with st.form("damage_report_form"):
                 )
 
             elif field_type == "single_choice":
-                labels = []
-                values = []
-
-                for option in field.get("options", []):
-                    labels.append(t(option["label_key"], language))
-                    values.append(option["value"])
-
+                labels, values = get_option_labels(field, language)
                 display_options = [""] + labels
 
                 selected_label = st.selectbox(
@@ -521,12 +474,7 @@ with st.form("damage_report_form"):
                     raw_answers[field_id] = values[selected_index]
 
             elif field_type == "multiple_choice":
-                labels = []
-                values = []
-
-                for option in field.get("options", []):
-                    labels.append(t(option["label_key"], language))
-                    values.append(option["value"])
+                labels, values = get_option_labels(field, language)
 
                 selected_labels = st.multiselect(
                     label,
