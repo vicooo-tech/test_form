@@ -136,7 +136,9 @@ def upload_file_to_aws(uploaded_file, report_id):
             headers=presign_headers,
             timeout=30
         )
-
+        print("AWS_IMAGE_URL:", aws_image_url)
+        print("Presign status code:", presign_response.status_code)
+        print("Presign response text:", presign_response.text)
         if not (200 <= presign_response.status_code < 300):
             return {
                 "success": False,
